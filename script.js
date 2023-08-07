@@ -27,3 +27,64 @@ form.addEventListener("submit", (event) => {
   getWeatherData(city);
   cityInput.value = "";
 });
+
+
+function getWeatherData(city) {
+    fetchCoordinates(city)
+        .then(coordinates => fetchWeatherData(coordinates))
+        .then(data => displayWeatherData(data))
+        .catch(error => {
+            console.error('Error fetching data:', error);
+            alert('An error occurred. Please try again later.');
+        });
+}
+
+async function fetchCoordinates(city) {
+    const geocodingURL = `https://api.openweathermap.org/geo/1.0/direct?q=${city}&appid=${apiKey}`;
+    const geocodingResponse = await fetch(geocodingURL);
+    const [locationData] = await geocodingResponse.json();
+
+    if (!locationData) {
+        throw new Error('City not found. Please enter a valid city name.');
+    }
+
+    return { lat: locationData.lat, lon: locationData.lon };
+}
+
+async function fetchWeatherData(coordinates) {
+    const weatherURL = `https://api.openweathermap.org/data/2.5/forecast?lat=${coordinates.lat}&lon=${coordinates.lon}&appid=${apiKey}`;
+    const weatherResponse = await fetch(weatherURL);
+    const weatherData = await weatherResponse.json();
+
+    return weatherData;
+}
+
+function displayWeatherData(data) {
+    // Display current weather conditions
+    const currentWeather = data.list[0];
+    const currentTempCelsius = Math.round(currentWeather.main.temp - 273.15); // Convert Kelvin to Celsius
+    const currentTempFahrenheit = Math.round((currentTempCelsius * 9) / 5 + 32); // Convert Celsius to Fahrenheit
+    const iconURL = `https://openweathermap.org/img/w/${currentWeather.weather[0].icon}.png`;
+
+    const currentWeatherHTML = `
+    <h2>${data.city.name}</h2>
+    <p>Date: ${new Date(currentWeather.dt * 1000).toLocaleDateString()}</p>
+    <p><img src="${iconURL}" alt="Weather Icon"></p>
+    <p>Temperature: ${currentTempFahrenheit}°F (${currentTempCelsius}°C)</p>
+    <p>Humidity: ${currentWeather.main.humidity}%</p>
+    <p>Wind Speed: ${currentWeather.wind.speed} m/s</p>
+  `;
+
+    currentWeatherDiv.innerHTML = currentWeatherHTML;
+
+    // Display 5-day forecast
+
+    let currentDate = new Date();
+    currentDate.setDate(currentDate.getDate() + 1);
+
+    const forecastHTML = data.list.slice(1, 6).map((item) => {
+        const date = currentDate.toLocaleDateString();
+        currentDate.setDate(currentDate.getDate() + 1);
+        const tempCelsius = Math.round(item.main.temp - 273.15); // Convert Kelvin to Celsius
+        const tempFahrenheit = Math.round((tempCelsius * 9) / 5 + 32); // Convert Celsius to Fahrenheit
+        const iconURL = `https://openweathermap.org/img/w/${item.weather[0].icon}.png`;
